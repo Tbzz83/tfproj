@@ -16,6 +16,8 @@ func createModules() error {
     if err != nil {
       return err
     }
+    //TODO
+    // write heredoc to touch each file
   }
   return nil
 }
