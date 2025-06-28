@@ -8,6 +8,9 @@ import (
   "os"
 )
 
+//TODO 
+//Providers
+
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
 type delimStringSlice []string
@@ -18,12 +21,16 @@ var modules delimStringSlice
 var envs delimStringSlice
 var tfDir string
 var style string
+// Modify possible styles here
+var styles = [...]string{"monolith", ""} 
 
 // Constants
 const (
+  yellow = "\033[33m"
   red = "\033[31m"
   reset = "\033[0m" 
-  redError = red+"\nError:"+reset
+  errorString = red+"\nError:"+reset
+  warningString = yellow+"\nWarning:"+reset
 )
 
 // allow splits using these delimeters
@@ -36,7 +43,7 @@ func delimSplit(r rune) bool {
 func (cs *delimStringSlice) Set(value string) error {
   *cs = strings.FieldsFunc(value, delimSplit)
   if len(*cs) == 0 {
-    return errors.New("\tError, invalid comma separated string in flag")
+    return errors.New(errorString+" invalid comma separated string in flag")
   }
   return nil
 }
@@ -63,25 +70,29 @@ func tfDirInit() error {
   if err != nil {
     return err
   }
-  flag.StringVar(&tfDir, "dir", wd, "Usage: --dir/-dir. determines the location of the terraform project. Default to current directory")
+  flag.StringVar(&tfDir, "dir", wd, "Usage: --dir/-dir. determines the location of the terraform project")
 
   return nil
 }
 
-// Makes sure style is formatted correctly
-func validateStyles() error {
-  var err error = nil
+// Makes sure style is formatted correctly, then call build() for the respective style requested if valid
+func buildStyle() error {
+  var err error
   switch style {
   case "monolith":
-    err := buildMonolith()
-    if err != nil {
-      return err
-    }
+    err = buildMonolith()
   case "":
+    fmt.Println(warningString+" you have not provided a value for '--style'")
   default:
-    err = errors.New(redError+" '"+style+"' is not a valid option for 'style'.\nOptions are: 'monolithic'\n")
+    errMsg := errorString+" '"+style+"' is not a valid option for '--style'\nOptions are: "
+    for _, s := range(styles) {
+      if s == "" {continue}
+      errMsg += fmt.Sprintf("%q ", s)
+    }
+    err = errors.New(errMsg)
+    return err
   }
-  return err
+  return nil
 }
 
 
@@ -89,7 +100,7 @@ func validateStyles() error {
 func dependsOn(flagName string) error {
   if !create {
     // throw error
-    return errors.New(redError+" '"+flagName+"' flag not specified\n")
+    return errors.New(errorString+" '"+flagName+"' flag not specified\n")
   }
   return nil
 }
@@ -123,13 +134,27 @@ func Cli() {
       return
     }
   }
-  
-  // Validate styles is correct then call build on the style
-  err := validateStyles() 
-  if err != nil {
-    fmt.Println(err)
-    return
+
+  // Check that flags that depend on --modules are being set
+  if len(style) > 0 {
+    err := dependsOn("--modules")
+    if err != nil {
+      fmt.Println(err)
+      return
+    }
   }
+  
+  if len(modules) > 0 {
+    // Validate styles is correct then call build on the style
+    err := buildStyle() 
+    if err != nil {
+      fmt.Println(err)
+      return
+    }
+  }
+
+  // 
+  //err := buildMonolith()
 
   testPrintFlags()
 }
