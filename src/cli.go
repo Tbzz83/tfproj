@@ -15,6 +15,10 @@ import (
 // a single flag according to allowed delimeters specified in delimSplit()
 type delimStringSlice []string
 
+type Project interface {
+  Build() error
+}
+
 // Global variables 
 var create bool
 var modules delimStringSlice
@@ -78,29 +82,43 @@ func tfDirInit() error {
 // Makes sure style is formatted correctly, then call build() for the respective style requested if valid
 func buildStyle() error {
   var err error
+  var project Project
   switch style {
   case "monolith":
-    err = buildMonolith()
+    project = &Monolith{style}
   case "":
-    fmt.Println(warningString+" you have not provided a value for '--style'")
+    fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
   default:
     errMsg := errorString+" '"+style+"' is not a valid option for '--style'\nOptions are: "
     for _, s := range(styles) {
       if s == "" {continue}
-      errMsg += fmt.Sprintf("%q ", s)
+      errMsg += fmt.Sprintf("'%s' ", s)
     }
+    errMsg += "\n"
     err = errors.New(errMsg)
-    return err
   }
-  return nil
+  
+  if project == nil {
+    return errors.New(errorString+" unknown error occurred with style '"+style+"'\n")
+  }
+  err = project.Build()
+
+  return err
 }
 
 
 // Depends on specific flag checker
-func dependsOn(flagName string) error {
+func dependsOnCreate() error {
   if !create {
     // throw error
-    return errors.New(errorString+" '"+flagName+"' flag not specified\n")
+    return errors.New(errorString+" '--create' flag not specified\n")
+  }
+  return nil
+}
+
+func dependsOnModules() error {
+  if len(modules) == 0 {
+    return errors.New(errorString+" '--modules' flag not specified\n")
   }
   return nil
 }
@@ -128,7 +146,7 @@ func Cli() {
 
   // Check that flags that depend on --create are being set
   if len(modules) > 0 || len(envs) > 0 {
-    err := dependsOn("--create")
+    err := dependsOnCreate()
     if err != nil {
       fmt.Println(err)
       return
@@ -137,7 +155,7 @@ func Cli() {
 
   // Check that flags that depend on --modules are being set
   if len(style) > 0 {
-    err := dependsOn("--modules")
+    err := dependsOnModules()
     if err != nil {
       fmt.Println(err)
       return
@@ -156,7 +174,7 @@ func Cli() {
   // 
   //err := buildMonolith()
 
-  testPrintFlags()
+  //testPrintFlags()
 }
 
 

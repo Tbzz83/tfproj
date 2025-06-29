@@ -10,12 +10,8 @@ import (
 Build functions for various env/module/style combinations
 */
 
-func createDir(path string) error {
-  err := os.MkdirAll(path, 0755)
-  if err != nil {
-    return err
-  }
-  return nil
+type Monolith struct {
+  name string
 }
 
 // Create boilerplate .tf files found in module directories
@@ -41,37 +37,48 @@ func moduleBoilerplate(path string) error {
       }
     }
   }
-
   return nil
 }
 
-// Doesn't need to be a pointer as it is (aside from the name) stateless
-func buildMonolith() error {
+// For monolith projects, a .tf file for each module should be created
+// in one directory for every env. it should also put some basic boilerplate
+// for sourcing the appropriate module. May also optionally create a 
+// backend_config.tf file if the .tfstate is being store externally
+func (*Monolith) Build() error {
   // create dirs for modules
-  for _, name := range(modules) {
-    path := tfDir+"/modules/"+name
-    err := createDir(path)
+  for _, moduleName := range(modules) {
+    modulePath := tfDir+"/modules/"+moduleName
+    err := createDir(modulePath)
     if err != nil {
       return err
     }
-    err = moduleBoilerplate(path)
+    // Create module boilerplate in each modules directory
+    err = moduleBoilerplate(modulePath)
     if err != nil {
       return err
     }
-  }
 
-  // create dirs for envs
-  for _, name := range(envs) {
-    path := tfDir+"/envs/"+name
-    err := createDir(path)
-    if err != nil {
-      return err
+    // create dirs for envs if they don't already exist
+    // Create boilerplate files to source modules
+    for _, envName := range(envs) {
+      envPath := tfDir+"/envs/"+envName
+      _, err := os.Stat(envPath)
+      if os.IsNotExist(err) {
+        err := createDir(envPath)
+        if err != nil {
+          return err
+        }
+      } 
+      moduleRelPath := "../../modules/"+moduleName
+      err = sourceModuleHeredoc(envPath+"/"+moduleName+".tf", moduleName, moduleRelPath)
+      if err != nil {
+        return err
+      }
     }
   }
 
   return nil
 }
-
 
 func createFile(path string) (*os.File, error) {
   _, err := os.Stat(path)
@@ -92,8 +99,24 @@ func touchFile(path string) error {
   return nil
 }
 
+func sourceModuleHeredoc(path string, moduleName string, modulePath string) error {
+  doc := heredoc.Doc(`
+  module "`+moduleName+`" {
+    source = "`+modulePath+`"
+  }`+"\n")
+  f, err := createFile(path)
+  if os.IsExist(err) {
+    return nil
+  }
+
+  err = os.WriteFile(path, []byte(doc), 0755)
+  
+  f.Close()
+  return err
+}
+
 func versionsHeredoc(path string) error {
-  bp := heredoc.Doc(`
+  doc := heredoc.Doc(`
   terraform {
     required_providers {}
     }
@@ -103,12 +126,16 @@ func versionsHeredoc(path string) error {
     return nil
   }
 
-  err = os.WriteFile(path, []byte(bp), 0755)
+  err = os.WriteFile(path, []byte(doc), 0755)
 
   f.Close()
   return err
 }
 
-
-
-
+func createDir(path string) error {
+  err := os.MkdirAll(path, 0755)
+  if err != nil {
+    return err
+  }
+  return nil
+}
