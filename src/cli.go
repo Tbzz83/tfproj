@@ -10,6 +10,8 @@ import (
 
 //TODO 
 //Providers
+// --backend aws (or azure etc...) 
+// --plan like tf plan to show the tree structure that will be created
 
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
@@ -17,16 +19,18 @@ type delimStringSlice []string
 
 type Project interface {
   Build() error
+  Describe()
 }
 
 // Global variables 
+var describe bool
 var create bool
 var modules delimStringSlice
 var envs delimStringSlice
 var tfDir string
 var style string
 // Modify possible styles here
-var styles = [...]string{"monolith", ""} 
+var styles = [...]string{"stack", ""} 
 
 // Constants
 const (
@@ -53,10 +57,13 @@ func (cs *delimStringSlice) Set(value string) error {
 }
 
 func (cs *delimStringSlice) String() string {
-  return "TEST"
+  return ""
 }
 
 // Initiliazing global flags
+func describeInit() {
+  flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe")
+}
 func createInit() {
   flag.BoolVar(&create, "create", false, "Usage: --create/-create")
 }
@@ -79,13 +86,73 @@ func tfDirInit() error {
   return nil
 }
 
+func stackDescription() string {
+  return `
+  ----Stack Project----
+  A project type where modules are referred to by a single .tf file. 
+  A stack based architecture with one environment called 'dev' and two 
+  modules called 'vm' and 'vnet' might look like:
+  stack/
+  ├── modules/
+  │   ├── vm/
+  │   │   ├── main.tf
+  │   │   ├── variables.tf
+  │   │   ├── outputs.tf
+  │   │   └── versions.tf
+  │   └── vnet/
+  │       ├── main.tf
+  │       ├── variables.tf
+  │       ├── outputs.tf
+  │       └── versions.tf
+  └── envs/
+      └── dev/
+          ├── vm.tf
+          ├── vnet.tf
+          ├── variables.tf
+          └── outputs.tf
+  `
+}
+
+func layeredDescription() string {
+  return `
+  ----Layered Project----
+  A project where each module (like vm, vnet etc...) has an individual
+  root directory dedicated to it, each with its own .tfstate files.
+  A layered based architecture with one environment called 'dev' and two modules called 'vm' and 'vnet' might look like:
+  layered/
+  ├── modules/
+  │   ├── vm/
+  │   │   ├── main.tf
+  │   │   ├── variables.tf
+  │   │   ├── outputs.tf
+  │   │   └── versions.tf
+  │   └── vnet/
+  │       ├── main.tf
+  │       ├── variables.tf
+  │       ├── outputs.tf
+  │       └── versions.tf
+  └── envs/
+      └── dev/
+          ├── vm/
+          │   ├── main.tf
+          │   ├── variables.tf
+          │   └── outputs.tf
+          └── vnet/
+              ├── main.tf
+              ├── variables.tf
+              └── outputs.tf
+  `
+}
+
 // Makes sure style is formatted correctly, then call build() for the respective style requested if valid
 func buildStyle() error {
   var err error
   var project Project
-  switch style {
-  case "monolith":
-    project = &Monolith{style}
+  switch strings.ToLower(style) {
+  case "stack":
+    project = &Stack{style, stackDescription()}
+  case "layered":
+    project = &Layered{style, layeredDescription()}
   case "":
     fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
   default:
@@ -97,6 +164,12 @@ func buildStyle() error {
     errMsg += "\n"
     err = errors.New(errMsg)
   }
+
+  // If describe flag set print the description then return without building
+  if describe {
+    project.Describe()
+    return nil
+  }
   
   if project == nil {
     return errors.New(errorString+" unknown error occurred with style '"+style+"'\n")
@@ -105,7 +178,6 @@ func buildStyle() error {
 
   return err
 }
-
 
 // Depends on specific flag checker
 func dependsOnCreate() error {
@@ -131,18 +203,25 @@ func flagInit() {
   envsInit()
   styleInit()
   tfDirInit()
+  describeInit()
 }
-
 
 // --main--
 func Cli() {
   flagInit()
 
+  if describe {
+    err := buildStyle()
+    if err != nil {
+      fmt.Println(err)
+    }
+    return 
+  }
+
   // Remove the last slash if it exists
   if string(tfDir[len(tfDir)-1]) == "/" || string(tfDir[len(tfDir)-1]) == "\\" {
     tfDir = tfDir[:len(tfDir)-1]
   }
-  
 
   // Check that flags that depend on --create are being set
   if len(modules) > 0 || len(envs) > 0 {
@@ -170,9 +249,6 @@ func Cli() {
       return
     }
   }
-
-  // 
-  //err := buildMonolith()
 
   //testPrintFlags()
 }

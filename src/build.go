@@ -1,6 +1,6 @@
 package src
 import (
-  //"fmt"
+  "fmt"
   "os"
   //"errors"
   "github.com/MakeNowJust/heredoc"
@@ -10,17 +10,31 @@ import (
 Build functions for various env/module/style combinations
 */
 
-type Monolith struct {
-  name string
+type Stack struct {
+  Name string
+  Description string
+}
+
+type Layered struct {
+  Name string 
+  Description string
+}
+
+func (p *Stack) Describe() {
+  fmt.Println(p.Description)
+}
+
+func (p *Layered) Describe() {
+  fmt.Println(p.Description)
 }
 
 // Create boilerplate .tf files found in module directories
 // Typically main.tf, variables.tf, versions.tf
 // Path is the directory of the module you want the boilerplate to be placed
 // Function will check that existing .tf files already exist, and if they do 
-// leave them alone
+// leave them alone. 'exclude' will skip files if the exclude string is provided
 func moduleBoilerplate(path string) error {
-  files := [...]string{"main.tf", "variables.tf", "versions.tf"}
+  files := [...]string{"main.tf", "variables.tf", "versions.tf", "outputs.tf"}
   for _, name := range(files) {
     if name != "versions.tf" {
       filePath := path + "/" + name 
@@ -40,11 +54,24 @@ func moduleBoilerplate(path string) error {
   return nil
 }
 
-// For monolith projects, a .tf file for each module should be created
+// Similar to moduleBoilerplate but for generic root files that will call modules
+func rootBoilerplate(path string) error {
+  files := [...]string{"variables.tf", "outputs.tf"}
+  for _, name := range(files) {
+    filePath := path + "/" + name
+    err := touchFile(filePath)
+    if err != nil {
+      return err
+    }
+  }
+  return nil
+}
+
+// For stack projects, a .tf file for each module should be created
 // in one directory for every env. it should also put some basic boilerplate
 // for sourcing the appropriate module. May also optionally create a 
 // backend_config.tf file if the .tfstate is being store externally
-func (*Monolith) Build() error {
+func (*Stack) Build() error {
   // create dirs for modules
   for _, moduleName := range(modules) {
     modulePath := tfDir+"/modules/"+moduleName
@@ -58,25 +85,95 @@ func (*Monolith) Build() error {
       return err
     }
 
-    // create dirs for envs if they don't already exist
-    // Create boilerplate files to source modules
-    for _, envName := range(envs) {
-      envPath := tfDir+"/envs/"+envName
-      _, err := os.Stat(envPath)
-      if os.IsNotExist(err) {
-        err := createDir(envPath)
+    if len(envs) > 0 {
+      // create dirs for envs if they don't already exist
+      // Create boilerplate files to source modules
+      for _, envName := range(envs) {
+        envPath := tfDir+"/envs/"+envName
+        _, err := os.Stat(envPath)
+        if os.IsNotExist(err) {
+          err := createDir(envPath)
+          if err != nil {
+            return err
+          }
+        } 
+        moduleRelPath := "../../modules/"+moduleName
+        err = sourceModuleHeredoc(envPath+"/"+moduleName+".tf", moduleName, moduleRelPath)
         if err != nil {
           return err
         }
-      } 
-      moduleRelPath := "../../modules/"+moduleName
-      err = sourceModuleHeredoc(envPath+"/"+moduleName+".tf", moduleName, moduleRelPath)
+
+        err = rootBoilerplate(envPath)
+        if err != nil {
+          return err
+        }
+      }
+    } else {
+      // User has not provided any envs and just wants files directly in root directory
+      moduleRelPath := "modules/"+moduleName
+      err = sourceModuleHeredoc(tfDir+"/"+moduleName+".tf", moduleName, moduleRelPath)
+      if err != nil {
+        return err
+      }
+      err = rootBoilerplate(tfDir)
       if err != nil {
         return err
       }
     }
   }
+  return nil
+}
 
+func (* Layered) Build() error {
+  for _, moduleName := range(modules) {
+    modulePath := tfDir+"/modules/"+moduleName
+    err := createDir(modulePath)
+    if err != nil {
+      return err
+    }
+    err = moduleBoilerplate(modulePath)
+    if err != nil {
+      return err
+    }
+
+    if len(envs) > 0 {
+      for _, envName := range(envs) {
+        envPath := tfDir+"/envs/"+envName+"/"+moduleName
+        _, err := os.Stat(envPath)
+        if os.IsNotExist(err) {
+          err := createDir(envPath)
+          if err != nil {
+            return err
+          }
+        } 
+        moduleRelPath := "../../../modules/"+moduleName
+        err = sourceModuleHeredoc(envPath+"/main.tf", moduleName, moduleRelPath)
+        if err != nil {
+          return err
+        }
+
+        err = rootBoilerplate(envPath)
+        if err != nil {
+          return err
+        }
+      }
+    } else {
+      err := createDir(tfDir+"/"+moduleName)
+      if err != nil {
+        return err
+      }
+      // User has not provided any envs and just wants files directly in root directory
+      moduleRelPath := "../modules/"+moduleName
+      err = sourceModuleHeredoc(tfDir+"/"+moduleName+"/main.tf", moduleName, moduleRelPath)
+      if err != nil {
+        return err
+      }
+      err = rootBoilerplate(tfDir+"/"+moduleName)
+      if err != nil {
+        return err
+      }
+    }
+  }
   return nil
 }
 
