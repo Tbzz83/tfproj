@@ -10,12 +10,17 @@ import (
 
 //TODO 
 //Providers
+// --provider aws (or azure etc...)
 // --backend aws (or azure etc...) 
 // --plan like tf plan to show the tree structure that will be created
 
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
 type delimStringSlice []string
+
+// equalDelimString reads a string and splits it into a slice based on a
+// '=' character. 
+type equalDelimSlice []string 
 
 type Project interface {
   Build() error
@@ -27,9 +32,12 @@ var describe bool
 var create bool
 var modules delimStringSlice
 var envs delimStringSlice
+var providers delimStringSlice
 var tfDir string
 var style string
-// Modify possible styles here
+
+// Modify possible styles here. Need a blank option in case there is a 
+// configuration chosen that doesn't require stack to be set
 var styles = [...]string{"stack", ""} 
 
 // Constants
@@ -46,23 +54,40 @@ func delimSplit(r rune) bool {
   return r == ':' || r == ',' || r == ';' || r == ' '
 }
 
+// split string based on = sign only
+func equalSplit(r rune) bool {
+  return r == '='
+}
+
+func (s *equalDelimSlice) Set(value string) error {
+  *s = strings.FieldsFunc(value, equalSplit)
+  if len(*s) == 0 {
+    return errors.New(errorString+" invalid equal ('=') separated string in flag")
+  }
+  return nil
+}
+
 // Set function required by flag.Var. Instructs on how row input value
 // from flag.Var should be handled and processesed for delimStringSlice types
-func (cs *delimStringSlice) Set(value string) error {
-  *cs = strings.FieldsFunc(value, delimSplit)
-  if len(*cs) == 0 {
+func (s *delimStringSlice) Set(value string) error {
+  *s = strings.FieldsFunc(value, delimSplit)
+  if len(*s) == 0 {
     return errors.New(errorString+" invalid comma separated string in flag")
   }
   return nil
 }
 
-func (cs *delimStringSlice) String() string {
+func (s *equalDelimSlice) String() string {
+  return ""
+}
+
+func (s *delimStringSlice) String() string {
   return ""
 }
 
 // Initiliazing global flags
 func describeInit() {
-  flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe")
+  flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe. Will describe the style specified by the '--style' flag")
 }
 func createInit() {
   flag.BoolVar(&create, "create", false, "Usage: --create/-create")
@@ -75,6 +100,9 @@ func envsInit() {
 }
 func styleInit() {
   flag.StringVar(&style, "style", "", "Usage: --style/-style. Requires '--modules' to be set")
+}
+func providersInit() {
+  flag.Var(&providers, "providers", "Usage: --providers/-providers. Requires '--create' to be set. Options are 'azure', 'aws'")
 }
 func tfDirInit() error {
   wd, err := os.Getwd()
@@ -204,6 +232,7 @@ func flagInit() {
   styleInit()
   tfDirInit()
   describeInit()
+  providersInit()
 }
 
 // --main--
@@ -211,6 +240,11 @@ func Cli() {
   flagInit()
 
   if describe {
+    if style == "" {
+      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
+      fmt.Println()
+      return 
+    }
     err := buildStyle()
     if err != nil {
       fmt.Println(err)
@@ -250,7 +284,7 @@ func Cli() {
     }
   }
 
-  //testPrintFlags()
+  testPrintFlags()
 }
 
 
@@ -263,5 +297,6 @@ func testPrintFlags() {
   fmt.Println("envs:", envs, "len envs:", len(envs))
   fmt.Println("style:", style)
   fmt.Println("tfDir:", tfDir)
+  fmt.Println("providers:", providers)
 }
 

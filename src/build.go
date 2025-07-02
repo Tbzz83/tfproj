@@ -2,7 +2,7 @@ package src
 import (
   "fmt"
   "os"
-  //"errors"
+  "errors"
   "github.com/MakeNowJust/heredoc"
 )
 
@@ -213,9 +213,42 @@ func sourceModuleHeredoc(path string, moduleName string, modulePath string) erro
 }
 
 func versionsHeredoc(path string) error {
+  requiredProviders := ""
+  for _, prov := range(providers) {
+    s := new(equalDelimSlice)
+    err := s.Set(prov)
+    if err != nil {
+      return err
+    }
+
+    if len(*s) > 2 {
+      return errors.New(errorString+" too many values to unpack for provider '"+prov+"'\n")
+    }
+
+    switch (*s)[0] {
+    case "aws":
+      // aws provider doc
+    case "azurerm":
+      // azure provider doc
+    default:
+      return errors.New(errorString+" '"+prov+"' is not a valid provider\n")
+    }
+    var provVersion string
+    
+    if len(*s) > 1 {
+      // Can assume user has provided a version
+      provVersion = (*s)[1]
+    } else {
+      provVersion = "lts"//TODO get lts version of provider
+    }
+    fmt.Println("provider version for",(*s)[0],":", provVersion)
+  }
+
+
   doc := heredoc.Doc(`
   terraform {
-    required_providers {}
+    required_providers {
+      `+requiredProviders+`
     }
   }`+"\n")
   f, err := createFile(path)
