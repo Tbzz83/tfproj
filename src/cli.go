@@ -9,10 +9,20 @@ import (
 )
 
 //TODO 
-//Providers
+// Providers
 // --provider aws (or azure etc...)
+// DONE...
+
+// Backend for tfstate
 // --backend aws (or azure etc...) 
+
+// Plan
 // --plan like tf plan to show the tree structure that will be created
+
+// Copy
+// --copy <existing_module>,<new_module_1>,<new_module_2>
+// copy should change key words in the new modules like the module source heredoc to match
+// the new module name
 
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
@@ -172,40 +182,6 @@ func layeredDescription() string {
   `
 }
 
-// Makes sure style is formatted correctly, then call build() for the respective style requested if valid
-func buildStyle() error {
-  var err error
-  var project Project
-  switch strings.ToLower(style) {
-  case "stack":
-    project = &Stack{style, stackDescription()}
-  case "layered":
-    project = &Layered{style, layeredDescription()}
-  case "":
-    fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
-  default:
-    errMsg := errorString+" '"+style+"' is not a valid option for '--style'\nOptions are: "
-    for _, s := range(styles) {
-      if s == "" {continue}
-      errMsg += fmt.Sprintf("'%s' ", s)
-    }
-    errMsg += "\n"
-    err = errors.New(errMsg)
-  }
-
-  // If describe flag set print the description then return without building
-  if describe {
-    project.Describe()
-    return nil
-  }
-  
-  if project == nil {
-    return errors.New(errorString+" unknown error occurred with style '"+style+"'\n")
-  }
-  err = project.Build()
-
-  return err
-}
 
 // Depends on specific flag checker
 func dependsOnCreate() error {
@@ -284,7 +260,7 @@ func Cli() {
     }
   }
 
-  testPrintFlags()
+  //testPrintFlags()
 }
 
 

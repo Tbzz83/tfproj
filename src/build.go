@@ -4,6 +4,7 @@ import (
   "os"
   "errors"
   "github.com/MakeNowJust/heredoc"
+  "strings"
 )
 
 /*
@@ -67,6 +68,40 @@ func rootBoilerplate(path string) error {
   return nil
 }
 
+// Makes sure style is formatted correctly, then call build() for the respective style requested if valid
+func buildStyle() error {
+  var err error
+  var project Project
+  switch strings.ToLower(style) {
+  case "stack":
+    project = &Stack{style, stackDescription()}
+  case "layered":
+    project = &Layered{style, layeredDescription()}
+  case "":
+    fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
+  default:
+    errMsg := errorString+" '"+style+"' is not a valid option for '--style'\nOptions are: "
+    for _, s := range(styles) {
+      if s == "" {continue}
+      errMsg += fmt.Sprintf("'%s' ", s)
+    }
+    errMsg += "\n"
+    err = errors.New(errMsg)
+  }
+
+  // If describe flag set print the description then return without building
+  if describe {
+    project.Describe()
+    return nil
+  }
+  
+  if project == nil {
+    return errors.New(errorString+" unknown error occurred with style '"+style+"'\n")
+  }
+  err = project.Build()
+
+  return err
+}
 // For stack projects, a .tf file for each module should be created
 // in one directory for every env. it should also put some basic boilerplate
 // for sourcing the appropriate module. May also optionally create a 
@@ -124,6 +159,8 @@ func (*Stack) Build() error {
   return nil
 }
 
+// A project where each module (like vm, vnet etc...) has an individual
+// root directory dedicated to it, each with its own .tfstate files.
 func (* Layered) Build() error {
   for _, moduleName := range(modules) {
     modulePath := tfDir+"/modules/"+moduleName
@@ -225,28 +262,38 @@ func versionsHeredoc(path string) error {
       return errors.New(errorString+" too many values to unpack for provider '"+prov+"'\n")
     }
 
-    switch (*s)[0] {
-    case "aws":
-      // aws provider doc
-    case "azurerm":
-      // azure provider doc
-    default:
-      return errors.New(errorString+" '"+prov+"' is not a valid provider\n")
-    }
     var provVersion string
-    
+
     if len(*s) > 1 {
       // Can assume user has provided a version
       provVersion = (*s)[1]
     } else {
-      provVersion = "lts"//TODO get lts version of provider
+      provVersion = "..."//... will use the latest versions of any provider
     }
-    fmt.Println("provider version for",(*s)[0],":", provVersion)
+    switch (*s)[0] {
+    case "aws":
+      // aws provider doc
+      requiredProviders += `
+      aws = {
+        source = "hashicorp/aws"
+        version = "`+provVersion+`"
+      }
+      `
+    case "azurerm":
+      // azure provider doc
+      requiredProviders += `
+      azurerm = {
+        source = "hashicorp/azurerm"
+        version = "`+provVersion+`"
+      }
+      `
+    default:
+      return errors.New(errorString+" '"+prov+"' is not a valid provider\n")
+    }
   }
 
-
-  doc := heredoc.Doc(`
-  terraform {
+  doc := heredoc.Doc(
+  `terraform {
     required_providers {
       `+requiredProviders+`
     }
