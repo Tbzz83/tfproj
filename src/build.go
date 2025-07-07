@@ -65,7 +65,11 @@ func rootBoilerplate(path string) error {
       return err
     }
   }
-  return nil
+  err := backendHeredoc(path + "/" + "backend_config.tf")
+  if err != nil {
+    return err
+  }
+  return err
 }
 
 // Makes sure style is formatted correctly, then call build() for the respective style requested if valid
@@ -87,6 +91,7 @@ func buildStyle() error {
     }
     errMsg += "\n"
     err = errors.New(errMsg)
+    return err
   }
 
   // If describe flag set print the description then return without building
@@ -94,14 +99,23 @@ func buildStyle() error {
     project.Describe()
     return nil
   }
+
+  // If plan flag set, print the plan and then return without building
+  if plan {
+    project.Plan()
+    return nil
+  }
   
+  // Final check to make sure project is populated
   if project == nil {
     return errors.New(errorString+" unknown error occurred with style '"+style+"'\n")
   }
+
   err = project.Build()
 
   return err
 }
+
 // For stack projects, a .tf file for each module should be created
 // in one directory for every env. it should also put some basic boilerplate
 // for sourcing the appropriate module. May also optionally create a 
@@ -161,7 +175,7 @@ func (*Stack) Build() error {
 
 // A project where each module (like vm, vnet etc...) has an individual
 // root directory dedicated to it, each with its own .tfstate files.
-func (* Layered) Build() error {
+func (*Layered) Build() error {
   for _, moduleName := range(modules) {
     modulePath := tfDir+"/modules/"+moduleName
     err := createDir(modulePath)
@@ -214,6 +228,8 @@ func (* Layered) Build() error {
   return nil
 }
 
+// helper function for touchFile. If you want to create an empty file, call touchFile as it
+// checks for existing file first.
 func createFile(path string) (*os.File, error) {
   _, err := os.Stat(path)
   if err == nil { 
@@ -233,6 +249,8 @@ func touchFile(path string) error {
   return nil
 }
 
+// Creates the main.tf file in the root directory (directory that calls tf modules) and adds
+// heredoc to source the appropriate tf module in tf code
 func sourceModuleHeredoc(path string, moduleName string, modulePath string) error {
   doc := heredoc.Doc(`
   module "`+moduleName+`" {
@@ -249,6 +267,66 @@ func sourceModuleHeredoc(path string, moduleName string, modulePath string) erro
   return err
 }
 
+// Function to validate whether the backend flag supplied by the user is valid.
+// if it is valid, return the heredoc for backend_config.tf
+func switchBackendHeredoc(path string) (string, error) {
+  backendDoc := ""
+
+  // just get the env/dev/etc.. part to use for the key path 
+  key := path[len(tfDir)+1:]
+
+  switch backend {
+  case "azure", "azurerm":
+    // azure heredoc
+    backendDoc = heredoc.Doc(
+    `terraform {
+      backend "azurerm" {
+        resource_group_name  = "YOUR_RESOURCE_GROUP_NAME"
+        storage_account_name = "YOUR_SA_NAME"
+        container_name       = "YOUR_CONTAINER_NAME"
+        key                  = "`+key+`"
+        use_azuread_auth     = true
+      }
+    }`)
+  case "aws", "s3":
+    // aws heredoc
+    backendDoc = heredoc.Doc(
+    `terraform {
+      backend "s3" {
+        bucket = "YOUR_BUCKET_NAME"
+        key    = "`+key+`"
+        region = "YOUR_REGION"
+      }
+    }`)
+  default:
+    return "", errors.New(errorString+" '"+backend+"' is not a valid backend source\n")
+  }
+
+  return backendDoc, nil
+}
+
+// Function that will create a backend_config.tf file and put the appropriate contents
+// based on the global backend variable flag. (Eg. '--backend azurerm' will use azure storage as the presumed
+// backend provider)
+func backendHeredoc(path string) error {
+  backendDoc, err := switchBackendHeredoc(path)
+  if err != nil {
+    return err
+  }
+  
+  f, err := createFile(path)
+  if os.IsExist(err) {
+    return nil
+  }
+  err = os.WriteFile(path, []byte(backendDoc), 0755)
+
+  f.Close()
+  return err
+}
+
+// Function that will create a versions.tf file and put the appropriate contents
+// based on the global providers variable flag. Allows you to provide multiple different
+// providers simultaneously
 func versionsHeredoc(path string) error {
   requiredProviders := ""
   for _, prov := range(providers) {
@@ -275,15 +353,15 @@ func versionsHeredoc(path string) error {
       // aws provider doc
       requiredProviders += `
       aws = {
-        source = "hashicorp/aws"
+        source  = "hashicorp/aws"
         version = "`+provVersion+`"
       }
       `
-    case "azurerm":
+    case "azurerm", "azure":
       // azure provider doc
       requiredProviders += `
       azurerm = {
-        source = "hashicorp/azurerm"
+        source  = "hashicorp/azurerm"
         version = "`+provVersion+`"
       }
       `
@@ -298,8 +376,11 @@ func versionsHeredoc(path string) error {
       `+requiredProviders+`
     }
   }`+"\n")
+
+  // Call createFile here instead of touchFile as you need the pointer to the file
   f, err := createFile(path)
   if os.IsExist(err) {
+    // If the file exists
     return nil
   }
 

@@ -9,12 +9,6 @@ import (
 )
 
 //TODO 
-// Providers
-// --provider aws (or azure etc...)
-// DONE...
-
-// Backend for tfstate
-// --backend aws (or azure etc...) 
 
 // Plan
 // --plan like tf plan to show the tree structure that will be created
@@ -32,23 +26,28 @@ type delimStringSlice []string
 // '=' character. 
 type equalDelimSlice []string 
 
+// The main interface for which various styles will call their respective methods
+// If a new style is added it must implement at least all the methods of the Project interface
 type Project interface {
   Build() error
   Describe()
+  Plan()
 }
 
-// Global variables 
+// Global variables and flag initialization
 var describe bool
 var create bool
 var modules delimStringSlice
 var envs delimStringSlice
 var providers delimStringSlice
+var backend string
 var tfDir string
 var style string
+var plan bool
 
 // Modify possible styles here. Need a blank option in case there is a 
 // configuration chosen that doesn't require stack to be set
-var styles = [...]string{"stack", ""} 
+var styles = [...]string{"stack", "layered", ""} 
 
 // Constants
 const (
@@ -96,30 +95,41 @@ func (s *delimStringSlice) String() string {
 }
 
 // Initiliazing global flags
-func describeInit() {
-  flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe. Will describe the style specified by the '--style' flag")
+func describeFlag() {
+  flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe\nWill describe the style specified by the '--style' flag")
 }
-func createInit() {
-  flag.BoolVar(&create, "create", false, "Usage: --create/-create")
+func createFlag() {
+  flag.BoolVar(&create, "create", false, "Usage: --create/-create\nCreates the specified project configuration")
 }
-func moduleInit() {
-  flag.Var(&modules, "modules", "Usage: --modules/-modules. Requires '--create' to be set")
+func planFlag() {
+  flag.BoolVar(&plan, "plan", false, "Usage: --plan/-plan\nWill illustrate a plan of the specified project configuration without creation")
 }
-func envsInit() {
-  flag.Var(&envs, "envs", "Usage: --envs/-envs. Requires '--create' to be set")
+func moduleFlag() {
+  flag.Var(&modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be used")
 }
-func styleInit() {
-  flag.StringVar(&style, "style", "", "Usage: --style/-style. Requires '--modules' to be set")
+func envsFlag() {
+  flag.Var(&envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be used")
 }
-func providersInit() {
-  flag.Var(&providers, "providers", "Usage: --providers/-providers. Requires '--create' to be set. Options are 'azure', 'aws'")
+func styleFlag() {
+  usageString := "Usage: --style/-style <styleName>\nDetermines the style of the project to be used. Options are: "
+  for _, s := range(styles) {
+    if s == "" {continue}
+    usageString += fmt.Sprintf("'%s' ", s)
+  }
+  flag.StringVar(&style, "style", "", usageString)
 }
-func tfDirInit() error {
+func providersFlag() {
+  flag.Var(&providers, "providers", "Usage: --providers/-providers")
+}
+func backendFlag() {
+  flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend")
+}
+func tfDirFlag() error {
   wd, err := os.Getwd()
   if err != nil {
     return err
   }
-  flag.StringVar(&tfDir, "dir", wd, "Usage: --dir/-dir. determines the location of the terraform project")
+  flag.StringVar(&tfDir, "dir", wd, "Usage: --dir/-dir\ndetermines the location of the terraform project")
 
   return nil
 }
@@ -202,13 +212,15 @@ func dependsOnModules() error {
 // Calling flag initialization
 func flagInit() {
   defer flag.Parse()
-  createInit()
-  moduleInit()
-  envsInit()
-  styleInit()
-  tfDirInit()
-  describeInit()
-  providersInit()
+  createFlag()
+  moduleFlag()
+  envsFlag()
+  styleFlag()
+  tfDirFlag()
+  describeFlag()
+  providersFlag()
+  backendFlag()
+  planFlag()
 }
 
 // --main--
@@ -226,6 +238,19 @@ func Cli() {
       fmt.Println(err)
     }
     return 
+  }
+
+  if plan {
+    if style == "" {
+      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
+      fmt.Println()
+      return 
+    }
+    err := buildStyle()
+    if err != nil {
+      fmt.Println(err)
+    }
+    return
   }
 
   // Remove the last slash if it exists
@@ -274,5 +299,6 @@ func testPrintFlags() {
   fmt.Println("style:", style)
   fmt.Println("tfDir:", tfDir)
   fmt.Println("providers:", providers)
+  fmt.Println("backend:", backend)
 }
 
