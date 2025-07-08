@@ -8,6 +8,9 @@ import (
   "os"
 )
 
+//TODO
+// print version
+
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
 type delimStringSlice []string
@@ -25,11 +28,13 @@ type Project interface {
 }
 
 // Global variables and flag initialization
+var versionString string = "v0.1.0"
 var describe bool
 var create bool
 var modules delimStringSlice
 var envs delimStringSlice
 var providers delimStringSlice
+var version bool
 var backend string
 var tfDir string
 var style string
@@ -95,6 +100,9 @@ func createFlag() {
 func planFlag() {
   flag.BoolVar(&plan, "plan", false, "Usage: --plan/-plan\nWill illustrate a plan of the specified project configuration without creation")
 }
+func versionFlag() {
+  flag.BoolVar(&version, "version", false, "Usage: --version/-version\nPrint tfproj version")
+}
 func moduleFlag() {
   flag.Var(&modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be used")
 }
@@ -102,7 +110,7 @@ func envsFlag() {
   flag.Var(&envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be used")
 }
 func styleFlag() {
-  usageString := "Usage: --style/-style <styleName>\nDetermines the style of the project to be used. Options are: "
+  usageString := "Usage: --style/-style <styleName>\nDetermines the style of the project to be used.\nOptions are: "
   for _, s := range(styles) {
     if s == "" {continue}
     usageString += fmt.Sprintf("'%s' ", s)
@@ -110,10 +118,10 @@ func styleFlag() {
   flag.StringVar(&style, "style", "", usageString)
 }
 func providersFlag() {
-  flag.Var(&providers, "providers", "Usage: --providers/-providers")
+  flag.Var(&providers, "providers", "Usage: --providers/-providers <azure=provider_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version")
 }
 func backendFlag() {
-  flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend")
+  flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file")
 }
 func tfDirFlag() error {
   wd, err := os.Getwd()
@@ -212,11 +220,16 @@ func flagInit() {
   providersFlag()
   backendFlag()
   planFlag()
+  versionFlag()
 }
 
 // --main--
 func Cli() {
   flagInit()
+
+  if version {
+    fmt.Printf("tfproj %s\n", versionString)
+  }
 
   if describe {
     if style == "" {
