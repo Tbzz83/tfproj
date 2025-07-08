@@ -8,16 +8,6 @@ import (
   "os"
 )
 
-//TODO 
-
-// Plan
-// --plan like tf plan to show the tree structure that will be created
-
-// Copy
-// --copy <existing_module>,<new_module_1>,<new_module_2>
-// copy should change key words in the new modules like the module source heredoc to match
-// the new module name
-
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
 type delimStringSlice []string
