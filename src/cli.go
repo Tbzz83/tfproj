@@ -51,6 +51,7 @@ var styles = [...]string{"stack", "layered", ""}
 
 // Constants
 const (
+  blueDir = "\033[1;34m"
   yellow = "\033[33m"
   red = "\033[31m"
   reset = "\033[0m" 
