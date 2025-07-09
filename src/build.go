@@ -36,39 +36,48 @@ func (p *Layered) Describe() {
 // leave them alone. 'exclude' will skip files if the exclude string is provided
 func moduleBoilerplate(path string) error {
   files := [...]string{"main.tf", "variables.tf", "versions.tf", "outputs.tf"}
+
   for _, name := range(files) {
     if name != "versions.tf" {
       filePath := path + "/" + name 
+
       err := touchFile(filePath)
       if err != nil {
         return err
       }
+
     } else {
-    // For versions.tf we can put some basic boilerplate .tf code
+      // For versions.tf we can put some basic boilerplate .tf code
       filePath := path+"/"+name
+
       err := versionsHeredoc(filePath)
       if err != nil {
         return err
       }
     }
   }
+
   return nil
 }
 
 // Similar to moduleBoilerplate but for generic root files that will call modules
 func rootBoilerplate(path string) error {
   files := [...]string{"variables.tf", "outputs.tf"}
+
   for _, name := range(files) {
     filePath := path + "/" + name
+
     err := touchFile(filePath)
     if err != nil {
       return err
     }
   }
+
   err := backendHeredoc(path + "/" + "backend_config.tf")
   if err != nil {
     return err
   }
+
   return err
 }
 
@@ -76,6 +85,7 @@ func rootBoilerplate(path string) error {
 func buildStyle() error {
   var err error
   var project Project
+
   switch strings.ToLower(style) {
   case "stack":
     project = &Stack{style, stackDescription()}
@@ -85,11 +95,14 @@ func buildStyle() error {
     fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
   default:
     errMsg := errorString+" '"+style+"' is not a valid option for '--style'\nOptions are: "
+
+    // Adding options to string from global styles variable
     for _, s := range(styles) {
       if s == "" {continue}
       errMsg += fmt.Sprintf("'%s' ", s)
     }
     errMsg += "\n"
+
     err = errors.New(errMsg)
     return err
   }
@@ -121,13 +134,14 @@ func buildStyle() error {
 // for sourcing the appropriate module. May also optionally create a 
 // backend_config.tf file if the .tfstate is being store externally
 func (*Stack) Build() error {
-  // create dirs for modules
   for _, moduleName := range(modules) {
     modulePath := tfDir+"/modules/"+moduleName
+
     err := createDir(modulePath)
     if err != nil {
       return err
     }
+
     // Create module boilerplate in each modules directory
     err = moduleBoilerplate(modulePath)
     if err != nil {
@@ -139,6 +153,7 @@ func (*Stack) Build() error {
       // Create boilerplate files to source modules
       for _, envName := range(envs) {
         envPath := tfDir+"/envs/"+envName
+
         _, err := os.Stat(envPath)
         if os.IsNotExist(err) {
           err := createDir(envPath)
@@ -146,7 +161,9 @@ func (*Stack) Build() error {
             return err
           }
         } 
+
         moduleRelPath := "../../modules/"+moduleName
+
         err = sourceModuleHeredoc(envPath+"/"+moduleName+".tf", moduleName, moduleRelPath)
         if err != nil {
           return err
@@ -160,10 +177,12 @@ func (*Stack) Build() error {
     } else {
       // User has not provided any envs and just wants files directly in root directory
       moduleRelPath := "modules/"+moduleName
+
       err = sourceModuleHeredoc(tfDir+"/"+moduleName+".tf", moduleName, moduleRelPath)
       if err != nil {
         return err
       }
+
       err = rootBoilerplate(tfDir)
       if err != nil {
         return err
@@ -177,11 +196,14 @@ func (*Stack) Build() error {
 // root directory dedicated to it, each with its own .tfstate files.
 func (*Layered) Build() error {
   for _, moduleName := range(modules) {
+
     modulePath := tfDir+"/modules/"+moduleName
+
     err := createDir(modulePath)
     if err != nil {
       return err
     }
+
     err = moduleBoilerplate(modulePath)
     if err != nil {
       return err
@@ -190,6 +212,7 @@ func (*Layered) Build() error {
     if len(envs) > 0 {
       for _, envName := range(envs) {
         envPath := tfDir+"/envs/"+envName+"/"+moduleName
+
         _, err := os.Stat(envPath)
         if os.IsNotExist(err) {
           err := createDir(envPath)
@@ -197,7 +220,9 @@ func (*Layered) Build() error {
             return err
           }
         } 
+
         moduleRelPath := "../../../modules/"+moduleName
+
         err = sourceModuleHeredoc(envPath+"/main.tf", moduleName, moduleRelPath)
         if err != nil {
           return err
@@ -213,12 +238,15 @@ func (*Layered) Build() error {
       if err != nil {
         return err
       }
+
       // User has not provided any envs and just wants files directly in root directory
       moduleRelPath := "../modules/"+moduleName
+
       err = sourceModuleHeredoc(tfDir+"/"+moduleName+"/main.tf", moduleName, moduleRelPath)
       if err != nil {
         return err
       }
+
       err = rootBoilerplate(tfDir+"/"+moduleName)
       if err != nil {
         return err
@@ -232,6 +260,8 @@ func (*Layered) Build() error {
 // checks for existing file first.
 func createFile(path string) (*os.File, error) {
   _, err := os.Stat(path)
+
+  // checks if file exists
   if err == nil { 
     return nil, os.ErrExist
   }
@@ -240,7 +270,9 @@ func createFile(path string) (*os.File, error) {
 
 // Creates a file and checks if there is a file that already exists
 func touchFile(path string) error {
+  
   f, err := createFile(path)
+
   if os.IsExist(err) {
   } else if err != nil {
     return err
@@ -256,7 +288,9 @@ func sourceModuleHeredoc(path string, moduleName string, modulePath string) erro
   module "`+moduleName+`" {
     source = "`+modulePath+`"
   }`+"\n")
+
   f, err := createFile(path)
+
   if os.IsExist(err) {
     return nil
   }
@@ -307,8 +341,12 @@ func switchBackendHeredoc(path string) (string, error) {
 
 // Function that will create a backend_config.tf file and put the appropriate contents
 // based on the global backend variable flag. (Eg. '--backend azurerm' will use azure storage as the presumed
-// backend provider)
+// backend provider). If backend variable zeroed then return without touching backend_config.tf
 func backendHeredoc(path string) error {
+  if backend == "" {
+    return nil
+  }
+
   backendDoc, err := switchBackendHeredoc(path)
   if err != nil {
     return err
@@ -329,32 +367,35 @@ func backendHeredoc(path string) error {
 // providers simultaneously
 func versionsHeredoc(path string) error {
   requiredProviders := ""
-  for _, prov := range(providers) {
+
+  for _, provider := range(providers) {
     s := new(equalDelimSlice)
-    err := s.Set(prov)
+    err := s.Set(provider)
+
     if err != nil {
       return err
     }
 
     if len(*s) > 2 {
-      return errors.New(errorString+" too many values to unpack for provider '"+prov+"'\n")
+      return errors.New(errorString+" too many values to unpack for provider '"+provider+"'\n")
     }
 
-    var provVersion string
+    var providerVersion string
 
     if len(*s) > 1 {
       // Can assume user has provided a version
-      provVersion = (*s)[1]
+      providerVersion = (*s)[1]
     } else {
-      provVersion = "..."//... will use the latest versions of any provider
+      providerVersion = "..." //'...' shorthand for latest versions of any provider
     }
+
     switch (*s)[0] {
     case "aws":
       // aws provider doc
       requiredProviders += `
       aws = {
         source  = "hashicorp/aws"
-        version = "`+provVersion+`"
+        version = "`+providerVersion+`"
       }
       `
     case "azurerm", "azure":
@@ -362,11 +403,11 @@ func versionsHeredoc(path string) error {
       requiredProviders += `
       azurerm = {
         source  = "hashicorp/azurerm"
-        version = "`+provVersion+`"
+        version = "`+providerVersion+`"
       }
       `
     default:
-      return errors.New(errorString+" '"+prov+"' is not a valid provider\n")
+      return errors.New(errorString+" '"+provider+"' is not a valid provider\n")
     }
   }
 

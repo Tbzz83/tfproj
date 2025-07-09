@@ -6,10 +6,6 @@ import (
 )
 
 func (*Stack) Plan() {
-  if tfDir[len(tfDir)-1] == '/' {
-    tfDir = tfDir[:len(tfDir)-1]
-  }
-
   homeDirs := [...]string{"envs", "modules"}
   homeIndentLevel := 0
 
@@ -140,10 +136,6 @@ func printDir(name string, indentLevel int, last bool, vertLines []int) {
 }
 
 func (*Layered) Plan() {
-  if tfDir[len(tfDir)-1] == '/' {
-    tfDir = tfDir[:len(tfDir)-1]
-  }
-
   homeDirs := [...]string{"envs", "modules"}
   homeIndentLevel := 0
 

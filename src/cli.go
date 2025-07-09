@@ -66,9 +66,11 @@ func equalSplit(r rune) bool {
 
 func (s *equalDelimSlice) Set(value string) error {
   *s = strings.FieldsFunc(value, equalSplit)
+
   if len(*s) == 0 {
     return errors.New(errorString+" invalid equal ('=') separated string in flag")
   }
+
   return nil
 }
 
@@ -76,16 +78,18 @@ func (s *equalDelimSlice) Set(value string) error {
 // from flag.Var should be handled and processesed for delimStringSlice types
 func (s *delimStringSlice) Set(value string) error {
   *s = strings.FieldsFunc(value, delimSplit)
+
   if len(*s) == 0 {
     return errors.New(errorString+" invalid comma separated string in flag")
   }
+
   return nil
 }
 
+// necessary methods to support flag.Var but don't need to return anything
 func (s *equalDelimSlice) String() string {
   return ""
 }
-
 func (s *delimStringSlice) String() string {
   return ""
 }
@@ -94,40 +98,52 @@ func (s *delimStringSlice) String() string {
 func describeFlag() {
   flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe\nWill describe the style specified by the '--style' flag")
 }
+
 func createFlag() {
   flag.BoolVar(&create, "create", false, "Usage: --create/-create\nCreates the specified project configuration")
 }
+
 func planFlag() {
   flag.BoolVar(&plan, "plan", false, "Usage: --plan/-plan\nWill illustrate a plan of the specified project configuration without creation")
 }
+
 func versionFlag() {
   flag.BoolVar(&version, "version", false, "Usage: --version/-version\nPrint tfproj version")
 }
+
 func moduleFlag() {
   flag.Var(&modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be used")
 }
+
 func envsFlag() {
   flag.Var(&envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be used")
 }
+
 func styleFlag() {
   usageString := "Usage: --style/-style <styleName>\nDetermines the style of the project to be used.\nOptions are: "
+
   for _, s := range(styles) {
     if s == "" {continue}
     usageString += fmt.Sprintf("'%s' ", s)
   }
+
   flag.StringVar(&style, "style", "", usageString)
 }
+
 func providersFlag() {
   flag.Var(&providers, "providers", "Usage: --providers/-providers <azure=provider_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version")
 }
+
 func backendFlag() {
   flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file")
 }
+
 func tfDirFlag() error {
   wd, err := os.Getwd()
   if err != nil {
     return err
   }
+
   flag.StringVar(&tfDir, "dir", wd, "Usage: --dir/-dir\ndetermines the location of the terraform project")
 
   return nil
@@ -222,7 +238,7 @@ func flagInit() {
   versionFlag()
 }
 
-// --main--
+// ====main====
 func Cli() {
   flagInit()
 
@@ -236,11 +252,18 @@ func Cli() {
       fmt.Println()
       return 
     }
+
     err := buildStyle()
     if err != nil {
       fmt.Println(err)
     }
+
     return 
+  }
+
+  // Remove the last slash if it exists from tfDir global variable
+  if string(tfDir[len(tfDir)-1]) == "/" || string(tfDir[len(tfDir)-1]) == "\\" {
+    tfDir = tfDir[:len(tfDir)-1]
   }
 
   if plan {
@@ -249,16 +272,13 @@ func Cli() {
       fmt.Println()
       return 
     }
+
     err := buildStyle()
     if err != nil {
       fmt.Println(err)
     }
-    return
-  }
 
-  // Remove the last slash if it exists
-  if string(tfDir[len(tfDir)-1]) == "/" || string(tfDir[len(tfDir)-1]) == "\\" {
-    tfDir = tfDir[:len(tfDir)-1]
+    return
   }
 
   // Check that flags that depend on --create are being set
