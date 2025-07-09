@@ -195,7 +195,6 @@ func layeredDescription() string {
 // Depends on specific flag checker
 func dependsOnCreate() error {
   if !create {
-    // throw error
     return errors.New(errorString+" '--create' flag not specified\n")
   }
   return nil
