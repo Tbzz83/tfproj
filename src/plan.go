@@ -30,25 +30,25 @@ func (*Stack) Plan() {
         // no envs specified by user
         for _, file := range(modules) {
           moduleFile := file+".tf"
-          printDir(moduleFile, homeIndentLevel, false, []int{})
+          printDir(moduleFile, homeIndentLevel, false, []bool{})
         }
 
         for _, file := range(envFiles) {
-          printDir(file, homeIndentLevel, false, []int{})
+          printDir(file, homeIndentLevel, false, []bool{})
         }
       } else {
-        printDir(blueDir+dir+reset, homeIndentLevel, lastDir, []int{})
+        printDir(blueDir+dir+reset, homeIndentLevel, lastDir, []bool{})
       }
       
       // skipped if len(envs) == 0
       for j, env := range(envs) {
-        envFilesLines := []int{1,1}
+        envFilesLines := []bool{true,true}
         lastEnv := false
         if j == len(envs) - 1 {
           lastEnv = true
-          envFilesLines = []int{1,0}
+          envFilesLines = []bool{true,false}
         } 
-        printDir(blueDir+env+reset, envLevel, lastEnv, []int{1})
+        printDir(blueDir+env+reset, envLevel, lastEnv, []bool{true})
 
         for _, file := range(modules) {
           moduleFile := file+".tf"
@@ -75,18 +75,18 @@ func (*Stack) Plan() {
     }
     
     if dir == "modules" {
-      printDir(blueDir+dir+reset, homeIndentLevel, lastHomeDir, []int{})
+      printDir(blueDir+dir+reset, homeIndentLevel, lastHomeDir, []bool{})
       moduleLevel := homeIndentLevel + 1
       moduleFiles := []string{"main.tf", "variables.tf", "outputs.tf", "versions.tf"}
-      moduleLines := []int{}
+      moduleLines := []bool{}
 
       for i, module := range(modules) {
-        moduleFilesLines := []int{0,1}
+        moduleFilesLines := []bool{false,true}
         lastModule := false
 
         if i == len(modules) - 1 {
           lastModule = true
-          moduleFilesLines = []int{}
+          moduleFilesLines = []bool{}
         } 
 
         printDir(blueDir+module+reset, moduleLevel, lastModule, moduleLines)
@@ -109,7 +109,7 @@ func (*Stack) Plan() {
 // be present. If you want backing vertical lines to be printed as well, provide a populated
 // 'lines' array. Eg. vertLines = []int{1,0,1} will tell the function to print a line `|`
 // at the 0th and 2nd indent levels but not the 1st.
-func printDir(name string, indentLevel int, last bool, vertLines []int) {
+func printDir(name string, indentLevel int, last bool, vertLines []bool) {
   offset := 4
   spaces := ""
 
@@ -120,8 +120,8 @@ func printDir(name string, indentLevel int, last bool, vertLines []int) {
   } 
  
   // skipped if len(vertLines) == 0
-  for _, v := range(vertLines) {
-    if v == 1 {
+  for _, vert := range(vertLines) {
+    if vert {
       spaces += "│   "
     } else {
       spaces += "    "
@@ -159,9 +159,10 @@ func (*Layered) Plan() {
       if len(envs) == 0 {
         // no user specified envs
         for _, module := range(modules) {
+          moduleIndentLevel := homeIndentLevel+1
 
-          printDir(blueDir+module+reset, homeIndentLevel, false, []int{})
-          printDir("main.tf", homeIndentLevel+1, false, []int{1})
+          printDir(blueDir+module+reset, homeIndentLevel, false, []bool{})
+          printDir("main.tf", moduleIndentLevel, false, []bool{true})
 
           for i, file := range(envFiles) {
             lastFile := false
@@ -170,28 +171,28 @@ func (*Layered) Plan() {
               lastFile = true
             }
 
-            printDir(file, homeIndentLevel+1, lastFile, []int{1})
+            printDir(file, moduleIndentLevel, lastFile, []bool{true})
           }
         }
       } else {
-        printDir(blueDir+dir+reset, homeIndentLevel, lastHome, []int{})
+        printDir(blueDir+dir+reset, homeIndentLevel, lastHome, []bool{})
       }
 
       for j, env := range(envs) {
 
-        envFilesLines := []int{1,1,1}
+        envFilesLines := []bool{true,true,true}
         lastEnv := false
 
         if j == len(envs) - 1 {
           lastEnv = true
-          envFilesLines = []int{1,0,1}
+          envFilesLines = []bool{true,false,true}
         } 
 
-        printDir(blueDir+env+reset, envLevel, lastEnv, []int{1})
+        printDir(blueDir+env+reset, envLevel, lastEnv, []bool{true})
 
         for k, file := range(modules) {
           moduleFile := blueDir+file+reset
-          moduleLines := []int{1,1}
+          moduleLines := []bool{true,true}
           moduleLevel := envLevel+1
           lastModule := false
 
@@ -200,13 +201,13 @@ func (*Layered) Plan() {
           }
 
           if lastEnv {
-            moduleLines[1] = 0
+            moduleLines[1] = false
           }
 
           printDir(moduleFile, moduleLevel, lastModule, moduleLines)
 
           if lastModule {
-            envFilesLines[2] = 0
+            envFilesLines[2] = false
           }
 
           printDir("main.tf", envLevel+2, false, envFilesLines)
@@ -233,18 +234,18 @@ func (*Layered) Plan() {
     
     if dir == "modules" {
 
-      printDir(blueDir+dir+reset, homeIndentLevel, lastHome, []int{})
+      printDir(blueDir+dir+reset, homeIndentLevel, lastHome, []bool{})
       moduleLevel := homeIndentLevel + 1
       moduleFiles := []string{"main.tf", "variables.tf", "outputs.tf", "versions.tf"}
-      moduleLines := []int{}
+      moduleLines := []bool{}
 
       for j, module := range(modules) {
-        moduleFilesLines := []int{0,1}
+        moduleFilesLines := []bool{false,true}
         lastHome = false
 
         if j == len(modules) - 1 {
           lastHome = true
-          moduleFilesLines = []int{}
+          moduleFilesLines = []bool{}
         } 
 
         printDir(blueDir+module+reset, moduleLevel, lastHome, moduleLines)
