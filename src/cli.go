@@ -28,7 +28,6 @@ type Project interface {
 }
 
 // Global variables and flag initialization
-var versionString string = "v0.1.0"
 var describe bool
 var create bool
 var modules delimStringSlice
@@ -46,6 +45,7 @@ var styles = [...]string{"stack", "layered", ""}
 
 // Constants
 const (
+  versionString = "v0.1.0"
   blueDir = "\033[1;34m"
   yellow = "\033[33m"
   red = "\033[31m"
