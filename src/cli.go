@@ -33,7 +33,7 @@ var create bool
 var modules delimStringSlice
 var envs delimStringSlice
 var providers delimStringSlice
-var version bool
+var versionBool bool
 var backend string
 var tfDir string
 var style string
@@ -45,7 +45,7 @@ var styles = [...]string{"stack", "layered", ""}
 
 // Constants
 const (
-  versionString = "v0.1.0"
+  version = "" // set at compile time with -ldflags 
   blueDir = "\033[1;34m"
   yellow = "\033[33m"
   red = "\033[31m"
@@ -108,7 +108,7 @@ func planFlag() {
 }
 
 func versionFlag() {
-  flag.BoolVar(&version, "version", false, "Usage: --version/-version\nPrint tfproj version")
+  flag.BoolVar(&versionBool, "version", false, "Usage: --version/-version\nPrint tfproj version")
 }
 
 func moduleFlag() {
@@ -242,8 +242,8 @@ func flagInit() {
 func Cli() {
   flagInit()
 
-  if version {
-    fmt.Printf("tfproj %s\n", versionString)
+  if versionBool {
+    fmt.Printf("tfproj %s\n", version)
   }
 
   if describe {
