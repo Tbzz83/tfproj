@@ -39,11 +39,12 @@ var (
   tfDir string
   style string
   plan bool
-  version string
+  Version string
   // Modify possible styles here. Need a blank option in case there is a 
   // configuration chosen that doesn't require stack to be set
   styles = [...]string{"stack", "layered", ""} 
 )
+
 
 // Constants
 const (
@@ -244,7 +245,7 @@ func Cli() {
   flagInit()
 
   if versionBool {
-    fmt.Printf("tfproj %s\n", version)
+    fmt.Printf("tfproj %s\n", Version)
   }
 
   if describe {
