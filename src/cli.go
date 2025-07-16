@@ -9,7 +9,7 @@ import (
 )
 
 //TODO
-// print version
+// Error and warning displaying simultaneously when --style is blank
 
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
@@ -113,11 +113,11 @@ func versionFlag() {
 }
 
 func moduleFlag() {
-  flag.Var(&modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be used")
+  flag.Var(&modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be created. For example 'vm,vnet' will create two modules for each respectively. At least one module must be provided")
 }
 
 func envsFlag() {
-  flag.Var(&envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be used")
+  flag.Var(&envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be created. Can be left blank if desired")
 }
 
 func styleFlag() {
@@ -132,11 +132,11 @@ func styleFlag() {
 }
 
 func providersFlag() {
-  flag.Var(&providers, "providers", "Usage: --providers/-providers <azure=provider_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version")
+  flag.Var(&providers, "providers", "Usage: --providers/-providers <provider_a=provider_a_version,provider_b=provider_b_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version.\nOptions are: 'azure' (or 'azurerm') and 'aws'")
 }
 
 func backendFlag() {
-  flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file")
+  flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file\nOptions are: 'azure' (or 'azurerm') or 'aws'")
 }
 
 func tfDirFlag() error {
