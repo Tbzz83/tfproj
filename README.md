@@ -103,7 +103,8 @@ tfDir
 Using the `--create` flag instead of `--plan` will create the style you specify based on the options presented. No folders or files will be overwritten. If you have a pre-existing terraform project and you simply want to add more modules, existing files or directories will be skipped.
 
 ### `--backend`
-when the `--backend` flag is specified, a file called `backend_config.tf` will be created and initially populated with some boilerplate code for using a remote terraform state location. For options on available backend providers see options below
+when the `--backend` flag is specified, a file called `backend_config.tf` will be created and initially populated with some boilerplate code for using a remote terraform state location. For options on available backend providers see options below.  
+Be sure to modify the contents of `backend_config.tf` to add the specifics of your remote storage connection.
 
 ### `--providers`
 similarly to `--backend`, `--providers` populates the `versions.tf` file in the `modules` directory with some boilerplate code for any providers you specify. You can also specify a specific version of a provider and multiple providers with `--providers azure=4.36.0 aws`. If no provider version is specified it will default to `...` meaning the latest provider terraform can find, though this is *not* recommended.
