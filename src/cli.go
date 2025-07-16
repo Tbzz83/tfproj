@@ -28,24 +28,25 @@ type Project interface {
 }
 
 // Global variables and flag initialization
-var describe bool
-var create bool
-var modules delimStringSlice
-var envs delimStringSlice
-var providers delimStringSlice
-var versionBool bool
-var backend string
-var tfDir string
-var style string
-var plan bool
-
-// Modify possible styles here. Need a blank option in case there is a 
-// configuration chosen that doesn't require stack to be set
-var styles = [...]string{"stack", "layered", ""} 
+var (
+  describe bool
+  create bool
+  modules delimStringSlice
+  envs delimStringSlice
+  providers delimStringSlice
+  versionBool bool
+  backend string
+  tfDir string
+  style string
+  plan bool
+  version string
+  // Modify possible styles here. Need a blank option in case there is a 
+  // configuration chosen that doesn't require stack to be set
+  styles = [...]string{"stack", "layered", ""} 
+)
 
 // Constants
 const (
-  version = "" // set at compile time with -ldflags 
   blueDir = "\033[1;34m"
   yellow = "\033[33m"
   red = "\033[31m"
