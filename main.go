@@ -4,6 +4,8 @@ import (
   "github.com/Tbzz83/tfproj/src"
 )
 
+var version = "dev"
+
 func main() {
-  src.Cli()
+  src.Cli(version)
 }
