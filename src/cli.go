@@ -156,20 +156,21 @@ func stackDescription() string {
   A project type where modules are referred to by a single .tf file. 
   A stack based architecture with one environment called 'dev' and two 
   modules called 'vm' and 'vnet' might look like:
-  stack/
-  ├── modules/
-  │   ├── vm/
+
+  `+blueDir+`stack`+reset+`
+  ├── `+blueDir+`modules`+reset+`
+  │   ├── `+blueDir+`vm`+reset+`
   │   │   ├── main.tf
   │   │   ├── variables.tf
   │   │   ├── outputs.tf
   │   │   └── versions.tf
-  │   └── vnet/
+  │   └── `+blueDir+`vnet`+reset+`
   │       ├── main.tf
   │       ├── variables.tf
   │       ├── outputs.tf
   │       └── versions.tf
-  └── envs/
-      └── dev/
+  └── `+blueDir+`envs`+reset+`
+      └── `+blueDir+`dev`+reset+`
           ├── vm.tf
           ├── vnet.tf
           ├── variables.tf
@@ -183,25 +184,26 @@ func layeredDescription() string {
   A project where each module (like vm, vnet etc...) has an individual
   root directory dedicated to it, each with its own .tfstate files.
   A layered based architecture with one environment called 'dev' and two modules called 'vm' and 'vnet' might look like:
-  layered/
-  ├── modules/
-  │   ├── vm/
+
+  `+blueDir+`layered`+reset+`
+  ├── `+blueDir+`modules`+reset+`
+  │   ├── `+blueDir+`vm`+reset+`
   │   │   ├── main.tf
   │   │   ├── variables.tf
   │   │   ├── outputs.tf
   │   │   └── versions.tf
-  │   └── vnet/
+  │   └── `+blueDir+`vnet`+reset+`
   │       ├── main.tf
   │       ├── variables.tf
   │       ├── outputs.tf
   │       └── versions.tf
-  └── envs/
-      └── dev/
-          ├── vm/
+  └── `+blueDir+`envs`+reset+`
+      └── `+blueDir+`dev`+reset+`
+          ├── `+blueDir+`vm`+reset+`
           │   ├── main.tf
           │   ├── variables.tf
           │   └── outputs.tf
-          └── vnet/
+          └── `+blueDir+`vnet`+reset+`
               ├── main.tf
               ├── variables.tf
               └── outputs.tf
@@ -248,11 +250,11 @@ func Cli(version string) {
   }
 
   if describe {
-    if style == "" {
-      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
-      fmt.Println()
-      return 
-    }
+//    if style == "" {
+//      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
+//      fmt.Println()
+//      return 
+//    }
 
     err := buildStyle()
     if err != nil {
@@ -268,11 +270,11 @@ func Cli(version string) {
   }
 
   if plan {
-    if style == "" {
-      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
-      fmt.Println()
-      return 
-    }
+//    if style == "" {
+//      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
+//      fmt.Println()
+//      return 
+//    }
 
     err := buildStyle()
     if err != nil {

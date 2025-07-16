@@ -91,8 +91,8 @@ func buildStyle() error {
     project = &Stack{style, stackDescription()}
   case "layered":
     project = &Layered{style, layeredDescription()}
-  case "":
-    fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
+//  case "":
+//    fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
   default:
     errMsg := errorString+" '"+style+"' is not a valid option for '--style'\nOptions are: "
 
