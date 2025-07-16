@@ -244,7 +244,7 @@ func Cli(version string) {
   flagInit()
 
   if versionBool {
-    fmt.Printf("tfproj %s\n", version)
+    fmt.Printf("tfproj v%s\n", version)
   }
 
   if describe {
@@ -311,7 +311,6 @@ func Cli(version string) {
 
   //testPrintFlags()
 }
-
 
 // Testing 
 func testPrintFlags() {
