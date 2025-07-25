@@ -9,7 +9,8 @@ import (
 )
 
 //TODO
-// Error and warning displaying simultaneously when --style is blank
+// Use options struct instead of flag globals
+// left adjust usage so it looks better. see mongodump for an example
 
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
@@ -250,11 +251,6 @@ func Cli(version string) {
   }
 
   if describe {
-//    if style == "" {
-//      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
-//      fmt.Println()
-//      return 
-//    }
 
     err := buildStyle()
     if err != nil {
@@ -270,11 +266,6 @@ func Cli(version string) {
   }
 
   if plan {
-//    if style == "" {
-//      fmt.Println(errorString + " no style specified. Please specify a style with the '--style' flag")
-//      fmt.Println()
-//      return 
-//    }
 
     err := buildStyle()
     if err != nil {
