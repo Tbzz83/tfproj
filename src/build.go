@@ -11,16 +11,21 @@ import (
 Build functions for various env/module/style combinations
 */
 
+// TODO
+// Implement the new tree TreeNode struct to build things much easier
+
 type Stack struct {
   Name string
   Description string
   f *Flags
+  TreeHead *TreeNode
 }
 
 type Layered struct {
   Name string 
   Description string
   f *Flags
+  TreeHead *TreeNode
 }
 
 func (p *Stack) Describe() {
@@ -114,6 +119,8 @@ func (f *Flags)buildStyle() error {
     return err
   }
 
+  project.treeInit()
+
   // If describe flag set print the description then return without building
   if describe {
     project.Describe()
@@ -122,7 +129,8 @@ func (f *Flags)buildStyle() error {
 
   // If plan flag set, print the plan and then return without building
   if plan {
-    project.Plan()
+    project.printAll()
+
     return nil
   }
   
@@ -352,6 +360,8 @@ func switchBackendHeredoc(path string, f *Flags) (string, error) {
   default:
     return "", errors.New(errorString+" '"+backend+"' is not a valid backend source\n")
   }
+
+  f.RootBoilerplateFiles = append(f.RootBoilerplateFiles, "backend_config.tf")
 
   return backendDoc, nil
 }

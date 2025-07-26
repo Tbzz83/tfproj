@@ -5,6 +5,15 @@ import (
   //"errors"
 )
 
+// TODO
+// Implement the new tree TreeNode struct to plan things much easier
+
+
+// These functions for printing and indenting are pretty messy
+// I think that using a tree structure like I've tried to implement with
+// tree.go will clean this up a lot... At the expense of tree.go also 
+// being a mess
+
 func (s *Stack) Plan() {
   tfDir := *s.f.TfDir
   backend := *s.f.Backend
@@ -277,3 +286,19 @@ func (l *Layered) Plan() {
     }
   }
 }
+
+// Temporary function taking over plan.go
+func (t *TreeNode)printAllRecurse(level int) {
+
+  spaces := ""
+  for range(level) {
+    spaces += "--"
+  }
+
+  fmt.Println(spaces, t.Name)
+
+  for _, child := range(t.Children) {
+    child.printAllRecurse(level+1)
+  }
+}
+

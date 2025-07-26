@@ -22,6 +22,8 @@ type Project interface {
   Build() error
   Describe()
   Plan()
+  treeInit()
+  printAll()
 }
 
 // Struct to hold flag variables
@@ -41,6 +43,8 @@ type Flags struct {
   // Modify possible styles here. Need a blank option in case there is a 
   // configuration chosen that doesn't require stack to be set
   Styles []string
+  RootBoilerplateFiles []string
+  ModuleBoilerplateFiles []string
 }
 
 // Constants
@@ -249,6 +253,8 @@ func flagInit() *Flags {
     Plan: &plan,
     Styles: []string{"stack", "layered", ""},
   }
+  f.RootBoilerplateFiles = []string{"outputs.tf", "variables.tf"}
+  f.ModuleBoilerplateFiles = []string{"outputs.tf", "variables.tf", "main.tf", "versions.tf"}
 
   f.createFlag()
   f.moduleFlag()
