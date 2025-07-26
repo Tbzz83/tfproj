@@ -8,9 +8,6 @@ import (
   "os"
 )
 
-//TODO
-// left adjust usage so it looks better. see mongodump for an example
-
 // delimStringSlice allows reading a delimited string from the cli into
 // a single flag according to allowed delimeters specified in delimSplit()
 type delimStringSlice []string
@@ -269,7 +266,13 @@ func flagInit() *Flags {
 
 // ====main====
 func Cli(version string) {
+
   f := flagInit()
+
+  // if no arguments passed print usage
+  if len(os.Args) == 1 {
+    flag.Usage()
+  }
 
   if *f.VersionBool {
     fmt.Printf("tfproj v%s\n", version)
@@ -284,7 +287,6 @@ func Cli(version string) {
 
     return 
   }
-
 
   // Remove the last slash if it exists from tfDir global variable
   if string((*f.TfDir)[len((*f.TfDir))-1]) == "/" || string((*f.TfDir)[len((*f.TfDir))-1]) == "\\" {
