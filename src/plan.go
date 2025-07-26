@@ -5,7 +5,12 @@ import (
   //"errors"
 )
 
-func (*Stack) Plan() {
+func (s *Stack) Plan() {
+  tfDir := *s.f.TfDir
+  backend := *s.f.Backend
+  envs := *s.f.Envs
+  modules := *s.f.Modules
+
   homeDirs := [...]string{"envs", "modules"}
   homeIndentLevel := 0
 
@@ -135,7 +140,12 @@ func printDir(name string, indentLevel int, last bool, vertLines []bool) {
   fmt.Print(spaces+"├── "+name+"\n")
 }
 
-func (*Layered) Plan() {
+func (l *Layered) Plan() {
+  tfDir := *l.f.TfDir
+  backend := *l.f.Backend
+  envs := *l.f.Envs
+  modules := *l.f.Modules
+
   homeDirs := [...]string{"envs", "modules"}
   homeIndentLevel := 0
 

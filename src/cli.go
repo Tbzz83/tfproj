@@ -9,7 +9,6 @@ import (
 )
 
 //TODO
-// Use options struct instead of flag globals
 // left adjust usage so it looks better. see mongodump for an example
 
 // delimStringSlice allows reading a delimited string from the cli into
@@ -28,23 +27,24 @@ type Project interface {
   Plan()
 }
 
-// Global variables and flag initialization
-var (
-  describe bool
-  create bool
-  modules delimStringSlice
-  envs delimStringSlice
-  providers delimStringSlice
-  versionBool bool
-  backend string
-  tfDir string
-  style string
-  plan bool
+// Struct to hold flag variables
+// Have to use pointers to variables to work with the Flags package
+type Flags struct {
+  Describe *bool
+  Create *bool
+  Modules *delimStringSlice
+  Envs *delimStringSlice
+  Providers *delimStringSlice
+  VersionBool *bool
+  Backend *string
+  TfDir *string
+  Style *string
+  Plan *bool
+  
   // Modify possible styles here. Need a blank option in case there is a 
   // configuration chosen that doesn't require stack to be set
-  styles = [...]string{"stack", "layered", ""} 
-)
-
+  Styles []string
+}
 
 // Constants
 const (
@@ -97,56 +97,56 @@ func (s *delimStringSlice) String() string {
 }
 
 // Initiliazing global flags
-func describeFlag() {
-  flag.BoolVar(&describe, "describe", false, "Usage: --describe/-describe\nWill describe the style specified by the '--style' flag")
+func (f *Flags)describeFlag() {
+  flag.BoolVar(f.Describe, "describe", false, "Usage: --describe/-describe\nWill describe the style specified by the '--style' flag")
 }
 
-func createFlag() {
-  flag.BoolVar(&create, "create", false, "Usage: --create/-create\nCreates the specified project configuration")
+func (f *Flags)createFlag() {
+  flag.BoolVar(f.Create, "create", false, "Usage: --create/-create\nCreates the specified project configuration")
 }
 
-func planFlag() {
-  flag.BoolVar(&plan, "plan", false, "Usage: --plan/-plan\nWill illustrate a plan of the specified project configuration without creation")
+func (f *Flags)planFlag() {
+  flag.BoolVar(f.Plan, "plan", false, "Usage: --plan/-plan\nWill illustrate a plan of the specified project configuration without creation")
 }
 
-func versionFlag() {
-  flag.BoolVar(&versionBool, "version", false, "Usage: --version/-version\nPrint tfproj version")
+func (f *Flags)versionFlag() {
+  flag.BoolVar(f.VersionBool, "version", false, "Usage: --version/-version\nPrint tfproj version")
 }
 
-func moduleFlag() {
-  flag.Var(&modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be created. For example 'vm,vnet' will create two modules for each respectively. At least one module must be provided")
+func (f *Flags)moduleFlag() {
+  flag.Var(f.Modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be created. For example 'vm,vnet' will create two modules for each respectively. At least one module must be provided")
 }
 
-func envsFlag() {
-  flag.Var(&envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be created. Can be left blank if desired")
+func (f *Flags)envsFlag() {
+  flag.Var(f.Envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be created. Can be left blank if desired")
 }
 
-func styleFlag() {
+func (f *Flags)styleFlag() {
   usageString := "Usage: --style/-style <styleName>\nDetermines the style of the project to be used.\nOptions are: "
 
-  for _, s := range(styles) {
+  for _, s := range(f.Styles) {
     if s == "" {continue}
     usageString += fmt.Sprintf("'%s' ", s)
   }
 
-  flag.StringVar(&style, "style", "", usageString)
+  flag.StringVar(f.Style, "style", "", usageString)
 }
 
-func providersFlag() {
-  flag.Var(&providers, "providers", "Usage: --providers/-providers <provider_a=provider_a_version,provider_b=provider_b_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version.\nOptions are: 'azure' (or 'azurerm') and 'aws'")
+func (f *Flags)providersFlag() {
+  flag.Var(f.Providers, "providers", "Usage: --providers/-providers <provider_a=provider_a_version,provider_b=provider_b_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version.\nOptions are: 'azure' (or 'azurerm') and 'aws'")
 }
 
-func backendFlag() {
-  flag.StringVar(&backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file\nOptions are: 'azure' (or 'azurerm') or 'aws'")
+func (f *Flags)backendFlag() {
+  flag.StringVar(f.Backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file\nOptions are: 'azure' (or 'azurerm') or 'aws'")
 }
 
-func tfDirFlag() error {
+func (f *Flags)tfDirFlag() error {
   wd, err := os.Getwd()
   if err != nil {
     return err
   }
 
-  flag.StringVar(&tfDir, "dir", wd, "Usage: --dir/-dir\ndetermines the location of the terraform project")
+  flag.StringVar(f.TfDir, "dir", wd, "Usage: --dir/-dir\ndetermines the location of the terraform project")
 
   return nil
 }
@@ -213,46 +213,67 @@ func layeredDescription() string {
 
 
 // Depends on specific flag checker
-func dependsOnCreate() error {
-  if !create {
+func (f *Flags)dependsOnCreate() error {
+  if !(*f.Create) {
     return errors.New(errorString+" '--create' flag not specified\n")
   }
   return nil
 }
 
-func dependsOnModules() error {
-  if len(modules) == 0 {
+func (f *Flags)dependsOnModules() error {
+  if len((*f.Modules)) == 0 {
     return errors.New(errorString+" '--modules' flag not specified\n")
   }
   return nil
 }
 
 // Calling flag initialization
-func flagInit() {
+func flagInit() *Flags {
   defer flag.Parse()
-  createFlag()
-  moduleFlag()
-  envsFlag()
-  styleFlag()
-  tfDirFlag()
-  describeFlag()
-  providersFlag()
-  backendFlag()
-  planFlag()
-  versionFlag()
+  // Initialize vars
+  var describe, create, versionBool, plan bool
+  var modules, envs, providers delimStringSlice
+  var backend, tfDir, style string
+
+  var f = Flags{
+    Describe: &describe,
+    Create: &create, 
+    Modules: &modules, 
+    Envs: &envs, 
+    Providers: &providers, 
+    VersionBool: &versionBool, 
+    Backend: &backend, 
+    TfDir: &tfDir,
+    Style: &style, 
+    Plan: &plan,
+    Styles: []string{"stack", "layered", ""},
+  }
+
+  f.createFlag()
+  f.moduleFlag()
+  f.envsFlag()
+  f.styleFlag()
+  f.tfDirFlag()
+  f.describeFlag()
+  f.providersFlag()
+  f.backendFlag()
+  f.planFlag()
+  f.versionFlag()
+
+  return &f
 }
 
 // ====main====
 func Cli(version string) {
-  flagInit()
+  f := flagInit()
 
-  if versionBool {
+  if *f.VersionBool {
     fmt.Printf("tfproj v%s\n", version)
   }
 
-  if describe {
+  if *f.Describe {
 
-    err := buildStyle()
+    err := f.buildStyle()
     if err != nil {
       fmt.Println(err)
     }
@@ -260,14 +281,15 @@ func Cli(version string) {
     return 
   }
 
+
   // Remove the last slash if it exists from tfDir global variable
-  if string(tfDir[len(tfDir)-1]) == "/" || string(tfDir[len(tfDir)-1]) == "\\" {
-    tfDir = tfDir[:len(tfDir)-1]
+  if string((*f.TfDir)[len((*f.TfDir))-1]) == "/" || string((*f.TfDir)[len((*f.TfDir))-1]) == "\\" {
+    (*f.TfDir) = (*f.TfDir)[:len((*f.TfDir))-1]
   }
 
-  if plan {
+  if (*f.Plan) {
 
-    err := buildStyle()
+    err := f.buildStyle()
     if err != nil {
       fmt.Println(err)
     }
@@ -276,45 +298,45 @@ func Cli(version string) {
   }
 
   // Check that flags that depend on --create are being set
-  if len(modules) > 0 || len(envs) > 0 {
-    err := dependsOnCreate()
+  if len((*f.Modules)) > 0 || len((*f.Envs)) > 0 {
+    err := f.dependsOnCreate()
     if err != nil {
       fmt.Println(err)
       return
     }
   }
 
-  // Check that flags that depend on --modules are being set
-  if len(style) > 0 {
-    err := dependsOnModules()
+  // Check that flags that depend on --(*f.Modules) are being set
+  if len((*f.Style)) > 0 {
+    err := f.dependsOnModules()
     if err != nil {
       fmt.Println(err)
       return
     }
   }
   
-  if len(modules) > 0 {
-    // Validate styles is correct then call build on the style
-    err := buildStyle() 
+  if len((*f.Modules)) > 0 {
+    // Validate (*f.Style)s is correct then call build on the (*f.Style)
+    err := f.buildStyle() 
     if err != nil {
       fmt.Println(err)
       return
     }
   }
 
-  //testPrintFlags()
+  //f.testPrintFlags()
 }
 
 // Testing 
-func testPrintFlags() {
+func (f *Flags)testPrintFlags() {
   fmt.Println()
   fmt.Println("---test printing all flags---")
-  fmt.Println("create bool:", create)
-  fmt.Println("modules:", modules, "len modules:", len(modules))
-  fmt.Println("envs:", envs, "len envs:", len(envs))
-  fmt.Println("style:", style)
-  fmt.Println("tfDir:", tfDir)
-  fmt.Println("providers:", providers)
-  fmt.Println("backend:", backend)
+  fmt.Println("(*f.Create) bool:", (*f.Create))
+  fmt.Println("(*f.Modules):", (*f.Modules), "len (*f.Modules):", len((*f.Modules)))
+  fmt.Println("(*f.Envs):", (*f.Envs), "len (*f.Envs):", len((*f.Envs)))
+  fmt.Println("(*f.Style):", (*f.Style))
+  fmt.Println("(*f.TfDir):", (*f.TfDir))
+  fmt.Println("(*f.Providers):", (*f.Providers))
+  fmt.Println("(*f.Backend):", (*f.Backend))
 }
 

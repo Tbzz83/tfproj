@@ -14,11 +14,13 @@ Build functions for various env/module/style combinations
 type Stack struct {
   Name string
   Description string
+  f *Flags
 }
 
 type Layered struct {
   Name string 
   Description string
+  f *Flags
 }
 
 func (p *Stack) Describe() {
@@ -34,7 +36,7 @@ func (p *Layered) Describe() {
 // Path is the directory of the module you want the boilerplate to be placed
 // Function will check that existing .tf files already exist, and if they do 
 // leave them alone. 'exclude' will skip files if the exclude string is provided
-func moduleBoilerplate(path string) error {
+func moduleBoilerplate(path string, providers delimStringSlice) error {
   files := [...]string{"main.tf", "variables.tf", "versions.tf", "outputs.tf"}
 
   for _, name := range(files) {
@@ -50,7 +52,7 @@ func moduleBoilerplate(path string) error {
       // For versions.tf we can put some basic boilerplate .tf code
       filePath := path+"/"+name
 
-      err := versionsHeredoc(filePath)
+      err := versionsHeredoc(filePath, providers)
       if err != nil {
         return err
       }
@@ -61,7 +63,7 @@ func moduleBoilerplate(path string) error {
 }
 
 // Similar to moduleBoilerplate but for generic root files that will call modules
-func rootBoilerplate(path string) error {
+func rootBoilerplate(path, backend string) error {
   files := [...]string{"variables.tf", "outputs.tf"}
 
   for _, name := range(files) {
@@ -73,7 +75,7 @@ func rootBoilerplate(path string) error {
     }
   }
 
-  err := backendHeredoc(path + "/" + "backend_config.tf")
+  err := backendHeredoc(path + "/" + "backend_config.tf", path, backend)
   if err != nil {
     return err
   }
@@ -82,15 +84,20 @@ func rootBoilerplate(path string) error {
 }
 
 // Makes sure style is formatted correctly, then call build() for the respective style requested if valid
-func buildStyle() error {
+func (f *Flags)buildStyle() error {
   var err error
   var project Project
 
+  style := *f.Style
+  styles := f.Styles
+  describe := *f.Describe
+  plan := *f.Plan
+
   switch strings.ToLower(style) {
   case "stack":
-    project = &Stack{style, stackDescription()}
+    project = &Stack{Name: style, Description: stackDescription(), f: f}
   case "layered":
-    project = &Layered{style, layeredDescription()}
+    project = &Layered{Name: style, Description: layeredDescription(), f: f}
 //  case "":
 //    fmt.Print(warningString+" you have not provided a value for '--style'\n\n")
   default:
@@ -133,7 +140,13 @@ func buildStyle() error {
 // in one directory for every env. it should also put some basic boilerplate
 // for sourcing the appropriate module. May also optionally create a 
 // backend_config.tf file if the .tfstate is being store externally
-func (*Stack) Build() error {
+func (s *Stack) Build() error {
+  modules := *s.f.Modules
+  tfDir := *s.f.TfDir
+  envs := *s.f.Envs
+  providers := *s.f.Providers
+  backend := *s.f.Backend
+
   for _, moduleName := range(modules) {
     modulePath := tfDir+"/modules/"+moduleName
 
@@ -143,7 +156,7 @@ func (*Stack) Build() error {
     }
 
     // Create module boilerplate in each modules directory
-    err = moduleBoilerplate(modulePath)
+    err = moduleBoilerplate(modulePath, providers)
     if err != nil {
       return err
     }
@@ -169,7 +182,7 @@ func (*Stack) Build() error {
           return err
         }
 
-        err = rootBoilerplate(envPath)
+        err = rootBoilerplate(envPath, backend)
         if err != nil {
           return err
         }
@@ -183,7 +196,7 @@ func (*Stack) Build() error {
         return err
       }
 
-      err = rootBoilerplate(tfDir)
+      err = rootBoilerplate(tfDir, backend)
       if err != nil {
         return err
       }
@@ -194,7 +207,13 @@ func (*Stack) Build() error {
 
 // A project where each module (like vm, vnet etc...) has an individual
 // root directory dedicated to it, each with its own .tfstate files.
-func (*Layered) Build() error {
+func (l *Layered) Build() error {
+  modules := *l.f.Modules
+  tfDir := *l.f.TfDir
+  envs := *l.f.Envs
+  providers := *l.f.Providers
+  backend := *l.f.Backend
+
   for _, moduleName := range(modules) {
 
     modulePath := tfDir+"/modules/"+moduleName
@@ -204,7 +223,7 @@ func (*Layered) Build() error {
       return err
     }
 
-    err = moduleBoilerplate(modulePath)
+    err = moduleBoilerplate(modulePath, providers)
     if err != nil {
       return err
     }
@@ -228,7 +247,7 @@ func (*Layered) Build() error {
           return err
         }
 
-        err = rootBoilerplate(envPath)
+        err = rootBoilerplate(envPath, backend)
         if err != nil {
           return err
         }
@@ -247,7 +266,7 @@ func (*Layered) Build() error {
         return err
       }
 
-      err = rootBoilerplate(tfDir+"/"+moduleName)
+      err = rootBoilerplate(tfDir+"/"+moduleName, backend)
       if err != nil {
         return err
       }
@@ -303,7 +322,7 @@ func sourceModuleHeredoc(path string, moduleName string, modulePath string) erro
 
 // Function to validate whether the backend flag supplied by the user is valid.
 // if it is valid, return the heredoc for backend_config.tf
-func switchBackendHeredoc(path string) (string, error) {
+func switchBackendHeredoc(path, tfDir, backend string) (string, error) {
   backendDoc := ""
 
   // just get the env/dev/etc.. part to use for the key path 
@@ -342,12 +361,12 @@ func switchBackendHeredoc(path string) (string, error) {
 // Function that will create a backend_config.tf file and put the appropriate contents
 // based on the global backend variable flag. (Eg. '--backend azurerm' will use azure storage as the presumed
 // backend provider). If backend variable zeroed then return without touching backend_config.tf
-func backendHeredoc(path string) error {
+func backendHeredoc(path, tfDir, backend string) error {
   if backend == "" {
     return nil
   }
 
-  backendDoc, err := switchBackendHeredoc(path)
+  backendDoc, err := switchBackendHeredoc(path, tfDir, backend)
   if err != nil {
     return err
   }
@@ -365,7 +384,7 @@ func backendHeredoc(path string) error {
 // Function that will create a versions.tf file and put the appropriate contents
 // based on the global providers variable flag. Allows you to provide multiple different
 // providers simultaneously
-func versionsHeredoc(path string) error {
+func versionsHeredoc(path string, providers delimStringSlice) error {
   requiredProviders := ""
 
   for _, provider := range(providers) {
