@@ -96,48 +96,52 @@ func (s *delimStringSlice) String() string {
   return ""
 }
 
+func formatUsage(flagName, description string) string {
+  return fmt.Sprintf("%-80s%s", flagName, description)
+}
+
 // Initiliazing global flags
 func (f *Flags)describeFlag() {
-  flag.BoolVar(f.Describe, "describe", false, "Usage: --describe/-describe\nWill describe the style specified by the '--style' flag")
+  flag.BoolVar(f.Describe, "describe", false, formatUsage("\nUsage: --describe/-describe","Will describe the style specified by the '--style' flag\n"))
 }
 
 func (f *Flags)createFlag() {
-  flag.BoolVar(f.Create, "create", false, "Usage: --create/-create\nCreates the specified project configuration")
+  flag.BoolVar(f.Create, "create", false, formatUsage("\nUsage: --create/-create","Creates the specified project configuration\n"))
 }
 
 func (f *Flags)planFlag() {
-  flag.BoolVar(f.Plan, "plan", false, "Usage: --plan/-plan\nWill illustrate a plan of the specified project configuration without creation")
+  flag.BoolVar(f.Plan, "plan", false, formatUsage("\nUsage: --plan/-plan","Will illustrate a plan of the specified project configuration without creation\n"))
 }
 
 func (f *Flags)versionFlag() {
-  flag.BoolVar(f.VersionBool, "version", false, "Usage: --version/-version\nPrint tfproj version")
+  flag.BoolVar(f.VersionBool, "version", false, formatUsage("\nUsage: --version/-version","Print tfproj version\n"))
 }
 
 func (f *Flags)moduleFlag() {
-  flag.Var(f.Modules, "modules", "Usage: --modules/-modules <module1,module2>\nDetermines the modules to be created. For example 'vm,vnet' will create two modules for each respectively. At least one module must be provided")
+  flag.Var(f.Modules, "modules", formatUsage("\nUsage: --modules/-modules <module1,module2>","Determines the modules to be created. For example 'vm,vnet' will create two modules for each respectively. At least one module must be provided\n"))
 }
 
 func (f *Flags)envsFlag() {
-  flag.Var(f.Envs, "envs", "Usage: --envs/-envs <env1,env2>\nDetermines the infrastructure environments to be created. Can be left blank if desired")
+  flag.Var(f.Envs, "envs", formatUsage("\nUsage: --envs/-envs <env1,env2>","Determines the infrastructure environments to be created. Can be left blank if desired\n"))
 }
 
 func (f *Flags)styleFlag() {
-  usageString := "Usage: --style/-style <styleName>\nDetermines the style of the project to be used.\nOptions are: "
+  usageString := formatUsage("\nUsage: --style/-style <styleName>","Determines the style of the project to be used. Options are: ")
 
   for _, s := range(f.Styles) {
     if s == "" {continue}
     usageString += fmt.Sprintf("'%s' ", s)
   }
 
-  flag.StringVar(f.Style, "style", "", usageString)
+  flag.StringVar(f.Style, "style", "", usageString+"\n")
 }
 
 func (f *Flags)providersFlag() {
-  flag.Var(f.Providers, "providers", "Usage: --providers/-providers <provider_a=provider_a_version,provider_b=provider_b_version>\nPopulates versions.tf file sourcing providers at latest version using provided version after '='.\nIf no version is provided the latest version will be used by specifying the '...' version.\nOptions are: 'azure' (or 'azurerm') and 'aws'")
+  flag.Var(f.Providers, "providers", formatUsage("\nUsage: --providers/-providers <a=a_version,b=b_version>","Populates versions.tf file sourcing providers at latest version using provided version after '='. Options are: 'azure' (or 'azurerm') and 'aws'\n"))
 }
 
 func (f *Flags)backendFlag() {
-  flag.StringVar(f.Backend, "backend", "", "Usage: --backend/-backend <azure|aws>\nCreates backend_config.tf files with boilerplate for your tfstate storage.\nBe sure to manually specify your storage locations by editing this file\nOptions are: 'azure' (or 'azurerm') or 'aws'")
+  flag.StringVar(f.Backend, "backend", "", formatUsage("\nUsage: --backend/-backend <azure|aws>","Creates backend_config.tf files with boilerplate for your tfstate storage.Be sure to manually specify your storage locations by editing this file. Options are: 'azure' (or 'azurerm') or 'aws'\n"))
 }
 
 func (f *Flags)tfDirFlag() error {
@@ -146,7 +150,7 @@ func (f *Flags)tfDirFlag() error {
     return err
   }
 
-  flag.StringVar(f.TfDir, "dir", wd, "Usage: --dir/-dir\ndetermines the location of the terraform project")
+  flag.StringVar(f.TfDir, "dir", wd, formatUsage("\nUsage: --dir/-dir","determines the location of the terraform project\n"))
 
   return nil
 }
